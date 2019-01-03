@@ -20,7 +20,7 @@ To use:
 The actual model training takes place in the cell below heading **4.01**, with the code:
 
 <code>
-    logger = setup_log()
+    logger = setup_log() 
     m = da_rnn(df_partial, logger = logger, parallel = False, learning_rate = .001)
     m.execute_training(n_epochs=100)
 </code>
