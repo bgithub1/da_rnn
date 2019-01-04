@@ -1,4 +1,4 @@
-### This is version of Chandler Zuo's implementation of the paper:
+### This is a version of Chandler Zuo's implementation of the paper:
 
 *A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction (see http://chandlerzuo.github.io/blog/2017/11/darnn)*
 
