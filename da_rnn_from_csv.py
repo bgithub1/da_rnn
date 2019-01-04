@@ -1,26 +1,26 @@
 
 # coding: utf-8
 
-# This version of Chandler Zuo's implementation of the paper: **A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction** (see http://chandlerzuo.github.io/blog/2017/11/darnn)
-# generalizes the input data to Chandler Zuo's da_rnn model.  
+# ### This is version of Chandler Zuo's implementation of the paper:
 # 
-# To use:
+# *A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction (see http://chandlerzuo.github.io/blog/2017/11/darnn)*
 # 
-# **Instantiate the class da_rnn with the following parameters:**
-#  * a pandas DataFrame whose columns are numeric features of time series data (NOT the path to a csv file).  
-#  * a logger (use the method setup_log())
-#  * an argument specifying whether you can run the model in parallel
-#  * learning rate
-#  
-#  ``` m = da_rnn(df_partial, logger = logger, parallel = False, learning_rate = .001) ```
+# The code allows one to replace the input data with other times series csvs.
 # 
-# **The data in the DataFrame can be like:**
+# ### To change the input csv file by changing the first 2 lines of the code block in **section 4.01**.  
+# 
+# <code>
+#     if __name__=='__main__':
+#         fname_no_ext = 'nasdaq100_padding' 
+#         rows_to_use = 5000
+#         ...
+# </code>
+# 
+# ### The data in the DataFrame can be like:
 #    1. the returns data for the components of an index like NDX (as in Chandler Zuo's version) as in the csv file ./data/nasdaq100_padding.csv, or 
 #    2. intra-day bar data with columns like **year, month, day, hour, minute open, high, low, close**, as in the csv file ./data/uso_full.csv
-#    
-#   
 # 
-# The actual model training takes place in the **main()** method in the cell below heading **3.01**, with the code:
+# ### The actual model training takes place in the **main()** method in the cell below heading **3.01**, with the code:
 # 
 # <code>
 #     logger = setup_log()
@@ -28,12 +28,17 @@
 #     m.execute_training(n_epochs=100)
 # </code>
 # 
-# If you use pdb, see the cheatsheet  https://appletree.or.kr/quick_reference_cards/Python/Python%20Debugger%20Cheatsheet.pdf 
+#   
+# 
+# 
+# ### To use the pdb debuger, add pdb.set_trace() statements to the code.
+# 
+# [See the cheatsheet:  https://appletree.or.kr/quick_reference_cards/Python/Python%20Debugger%20Cheatsheet.pdf ]
 # 
 
-# ### 1.01 Define dependencies
+# ### 1.0 Define dependencies
 
-# In[1]:
+# In[4]:
 
 
 import pdb
@@ -58,9 +63,9 @@ pd.set_option('display.max_rows',1000)
 pd.set_option('display.max_columns',1000)
 
 
-# #### 1.02 Define a method that creates a python logger 
+# #### 1.01 Define a method that creates a python logger 
 
-# In[2]:
+# In[5]:
 
 
 def setup_log(tag = 'VOC_TOPICS'):
@@ -85,7 +90,7 @@ def setup_log(tag = 'VOC_TOPICS'):
 # ### 2.0 Define the main components of the RNN model
 # #### 2.01 Define the encoder:
 
-# In[3]:
+# In[6]:
 
 
 class encoder(nn.Module):
@@ -156,7 +161,7 @@ class encoder(nn.Module):
 
 # #### 2.02 Define the decoder:
 
-# In[4]:
+# In[7]:
 
 
 class decoder(nn.Module):
@@ -211,7 +216,7 @@ class decoder(nn.Module):
 
 # #### 2.03 Define the RNN class, that uses the encoder and decoder
 
-# In[5]:
+# In[8]:
 
 
 class da_rnn:
@@ -384,7 +389,7 @@ class da_rnn:
 
 # #### 2.04 Define pred_df to execute predictions from a DataFrame
 
-# In[6]:
+# In[9]:
 
 
 def pred_df(df_test,model):
@@ -423,16 +428,18 @@ def pred_df(df_test,model):
     return y_pred
 
 
-# ## 3.0 Launch the training of the RNN
+# ## 3.0 Define main method that launches the training of the RNN
 
-# #### 3.01 Read the main csv file, and add appropriate date columns
-#  2 possible csv files are provided:
-#    1. Chandler Zuo's orginal nasdaq100 csv file;
-#    2. A file of one minute bar data for the commodity ETF USO
-#  
-# Comment out one, and use the other.
+# #### 3.01 The main() method:
+#   1. Read's the main csv file into a pandas DataFrame,
+#   2. Selects a subset of that DataFrame's rows,
+#   3. Instantiates a logger,
+#   4. Instanstiates an instance of da_rnn,
+#   5. Calls execute_training,
+#   6. Run predictions using the pred_df method and model.predict .
+#   
 
-# In[7]:
+# In[11]:
 
 
 def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
@@ -448,10 +455,12 @@ def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
     df = pd.read_csv(data_file)
     print(df.columns.values,df.as_matrix().shape)
 
-    # don't skew the days
+    # set label_column and also use the close as the labels if you have open,high,low,close data
+    label_column = 'NDX'
     if 'close' in df.columns.values:
-        print('moving the close column to the NDX')
-        df['NDX'] = df['close'] 
+        label_column = 'LABEL'
+        print('moving the close column to the label_column')
+        df[label_column] = df['close'] 
 
     # create a subset of the main csv by changing NUM_ROWS_TO_USE
     NUM_ROWS_TO_USE=subset_rows
@@ -463,25 +472,38 @@ def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
     #  run the model
     logger = setup_log()
     m = da_rnn(df_partial, logger = logger, parallel = False,
-                  learning_rate = .001)
+                  learning_rate = .001,ticker=label_column)
     m.execute_training(n_epochs=100)
     
     # Execute the predictions using the above pred_df method, and m.predict
     test_size = m.X.shape[0] - m.train_size
     y_pred_df = pred_df(df_partial.iloc[-1*test_size:],m)
     yp_model = m.predict(on_train = False)
-    np.mean(y_pred_df),np.mean(yp_model)
+    print('mean predicted price from pred_df: %f, mean predicted price from model.predict: %f' %(np.mean(y_pred_df),np.mean(yp_model)))
     return {'model':m,'dataframe':df_partial,'y_pred':yp_model,'test_size':test_size}
 
 
-# ## 4.0 Run everthing
+# ### 4.0 Initiate everthing from the main code block below
+# This code block can also be used from a module that you can create using the bash command line:
+# 
+# ``` jupyter nbconvert da_rnn_from_csv.ipynb --to python ```
 
-# In[8]:
+# #### 4.01  In the main code block below, set the variable fname_no_ext and the variable rows_to_use below.
+# 
+# <code>
+#     # use either nasdaq100_padding or uso_full
+#     fname_no_ext = 'nasdaq100_padding' 
+#     rows_to_use = 5000
+# </code>
+
+# In[12]:
 
 
 if __name__=='__main__':
+#     fname_no_ext = 'uso_full'
     fname_no_ext = 'nasdaq100_padding'
-    return_dict = main(FILE_NAME_NO_EXTENSION=fname_no_ext,subset_rows=5000)
+    rows_to_use = 5000
+    return_dict = main(FILE_NAME_NO_EXTENSION=fname_no_ext,subset_rows=rows_to_use)
     df_partial = return_dict['dataframe']
     m = return_dict['model']
     
@@ -501,7 +523,7 @@ if __name__=='__main__':
         2. beg_index
     ''' 
     y_test_size = len(df_partial) - m2.train_size
-    y_act = np.array(df_partial.iloc[-1 * y_test_size:]['NDX']) - m2.y_train_mean
+    y_act = np.array(df_partial.iloc[-1 * y_test_size:][m2.ticker]) - m2.y_train_mean
     y_pred = yp_model_2[-1 * y_test_size:]
     print(y_test_size,len(y_act),len(y_pred))
     df_review = pd.DataFrame({'y_act':y_act,'y_pred':y_pred})
@@ -513,10 +535,10 @@ if __name__=='__main__':
     df_review.iloc[beg_index:end_index].plot(y=['y_act','y_pred'],figsize=(12,10))
 
 
-# ## 6.0 Save this ipynb notebook as a python module
+# ## 5.0 Save this ipynb notebook as a python module
 # #### run the command below in a command line in order to save this workbook as a python module
 
-# In[9]:
+# In[ ]:
 
 
 #jupyter nbconvert da_rnn_from_csv.ipynb --to python
