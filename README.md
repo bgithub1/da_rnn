@@ -41,9 +41,9 @@ The cell with the ```if __name__=='__main___``` code (in **section 4.0**) will l
 
 ## Data:
 The folder **data** contains several csv files:
-* nasdaq100_padding.csv - original csv file used by Chandler Zuo of NDX components
-* uso_full.csv - one minute bar data for the commodity ETF USO
-* uso_201812.csv - one minute bar data just for December 2018
+* <span style="color:blue">nasdaq100_padding.csv</span> - original csv file used by Chandler Zuo of NDX components
+* <span style="color:blue">uso_full.csv</span> - one minute bar data for the commodity ETF USO
+* <span style="color:blue">uso_201812.csv</span> - one minute bar data just for December 2018
 
 You can train the model using either nasdaq100_padding.csv, uso_full.csv.  You can also use another time series csv with numeric columns, one of which is the label for that row (like other year, month, day, hour, minute open, high, low, close bar data).
 
@@ -69,3 +69,4 @@ The actual model training takes place in the **main()** method in the cell below
 ## Using pdb 
 To use the pdb debuger, add pdb.set_trace() statements to the code.  
 [See this cheatsheet for a quick reference to pdb commands](https://appletree.or.kr/quick_reference_cards/Python/Python%20Debugger%20Cheatsheet.pdf)
+  
