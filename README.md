@@ -1,5 +1,4 @@
 ## da_rnn_from_csv 
-___
 This is a version of Chandler Zuo's implementation of the paper:  
 [*A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction*](https://arxiv.org/pdf/1704.02971.pdf)  
 which he details in his blog post  
