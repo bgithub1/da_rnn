@@ -1,5 +1,5 @@
 ## da_rnn_from_csv 
-
+___
 This is a version of Chandler Zuo's implementation of the paper:  
 [*A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction*](https://arxiv.org/pdf/1704.02971.pdf)  
 which he details in his blog post  
@@ -29,6 +29,7 @@ The implementation does the following:
   
 * See the ipynb notebooks **use_da_rnn_from_csv_module.ipynb** and **sine_curve_test.ipynb** to use the da_rnn model class from other ipynb notebooks.
 
+___
 ## Use:  
 To use this ipynb notebook, run all of the notebook's cells.  
 In **section 4.0**, you can change the data from <span style="color:blue">nasdaq100</span> component data to <span style="color:blue">uso</span> 1-minute time bars.
@@ -40,7 +41,7 @@ The cell with the ```if __name__=='__main___``` code (in **section 4.0**) will l
 * Reloading the model,
 * Rerunning predictions using the saved model
 
-
+___
 ## Data:
 The folder **data** contains several csv files:
 * <span style="color:blue">nasdaq100_padding.csv</span> - original csv file used by Chandler Zuo of NDX components
@@ -49,13 +50,13 @@ The folder **data** contains several csv files:
 
 You can train the model using either nasdaq100_padding.csv, uso_full.csv.  You can also use another time series csv with numeric columns, one of which is the label for that row (like other year, month, day, hour, minute open, high, low, close bar data).
 
-
+___
 ## Structure of the csv/DataFrame:
 The data in the csv/DataFrame can contain rows like:  
 1. the returns data for the components of an index like NDX (as in Chandler Zuo's version) as in the csv file ./data/nasdaq100_padding.csv, or 
 2. intra-day bar data with columns like **year, month, day, hour, minute open, high, low, close**, as in the csv file ./data/uso_full.csv
 
-
+___
 ## The main() method in section 3.0
 The actual model training takes place in the **main()** method in the cell below heading **3.01**, with the code:
 
@@ -67,7 +68,7 @@ The actual model training takes place in the **main()** method in the cell below
 
   
 
-
+___
 ## Using pdb 
 To use the pdb debuger, add pdb.set_trace() statements to the code.  
 [See this cheatsheet for a quick reference to pdb commands](https://appletree.or.kr/quick_reference_cards/Python/Python%20Debugger%20Cheatsheet.pdf)
