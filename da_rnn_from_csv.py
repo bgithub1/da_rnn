@@ -2,7 +2,7 @@
 # coding: utf-8
 
 # ## da_rnn_from_csv 
-# 
+# ___
 # This is a version of Chandler Zuo's implementation of the paper:  
 # [*A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction*](https://arxiv.org/pdf/1704.02971.pdf)  
 # which he details in his blog post  
@@ -29,8 +29,13 @@
 #   ``` pickle.dump(m,open(f'{fname_no_ext}.pt','wb')) ```  
 #   Then reload it and use it to make more predictions:  
 #   ``` m_from_pickle = pickle.load(open(f'{fname_no_ext}.pt','wb')) ```
+#  
+#   
 # 
+# 
+# ___
 # ## Use:  
+# ___
 # To use this ipynb notebook, run all of the notebook's cells.  
 # In **section 4.0**, you can change the data from <span style="color:blue">nasdaq100</span> component data to <span style="color:blue">uso</span> 1-minute time bars.
 # 
@@ -42,6 +47,7 @@
 # * Rerunning predictions using the saved model
 # 
 # 
+# ___
 # ## Data:
 # The folder **data** contains several csv files:
 # * <span style="color:blue">nasdaq100_padding.csv</span> - original csv file used by Chandler Zuo of NDX components
@@ -51,12 +57,13 @@
 # You can train the model using either nasdaq100_padding.csv, uso_full.csv.  You can also use another time series csv with numeric columns, one of which is the label for that row (like other year, month, day, hour, minute open, high, low, close bar data).
 # 
 # 
+# ___
 # ## Structure of the csv/DataFrame:
 # The data in the csv/DataFrame can contain rows like:  
 # 1. the returns data for the components of an index like NDX (as in Chandler Zuo's version) as in the csv file ./data/nasdaq100_padding.csv, or 
 # 2. intra-day bar data with columns like **year, month, day, hour, minute open, high, low, close**, as in the csv file ./data/uso_full.csv
 # 
-# 
+# ___
 # ## The main() method in section 3.0
 # The actual model training takes place in the **main()** method in the cell below heading **3.01**, with the code:
 # 
@@ -68,7 +75,7 @@
 # 
 #   
 # 
-# 
+# ___
 # ## Using pdb 
 # To use the pdb debuger, add pdb.set_trace() statements to the code.  
 # [See this cheatsheet for a quick reference to pdb commands](https://appletree.or.kr/quick_reference_cards/Python/Python%20Debugger%20Cheatsheet.pdf)
@@ -76,7 +83,7 @@
 
 # ### 1.0 Define dependencies
 
-# In[9]:
+# In[1]:
 
 
 import pdb
@@ -103,7 +110,7 @@ pd.set_option('display.max_columns',1000)
 
 # #### 1.01 Define a method that creates a python logger 
 
-# In[10]:
+# In[2]:
 
 
 def setup_log(tag = 'VOC_TOPICS'):
@@ -128,7 +135,92 @@ def setup_log(tag = 'VOC_TOPICS'):
 # ### 2.0 Define the main components of the RNN model
 # #### 2.01 Define the encoder:
 
-# In[11]:
+# In[3]:
+
+
+# class encoder_save(nn.Module):
+#     def __init__(self, input_size, hidden_size, T):
+#         # input size: number of underlying factors (81)
+#         # T: number of time steps (10)
+#         # hidden_size: dimension of the hidden state
+#         super(encoder, self).__init__()
+#         self.input_size = input_size
+#         self.hidden_size = hidden_size
+#         self.T = T
+
+#         self.lstm_layer = nn.LSTM(input_size = input_size, hidden_size = hidden_size, num_layers = 1)
+#         self.attn_linear = nn.Linear(in_features = 2 * hidden_size + T - 1, out_features = 1)
+
+#     def forward(self, input_data):
+#         # T is the number of time steps that we iterate through to implement attention
+#         # input_size is the number of features in the input data
+#         # input_data.shape:     batch_size, T - 1, input_size
+#         # input_weighted.shape: batch_size, T - 1, input_size
+#         # input_encoded.shape:  batch_size, T - 1, hidden_size
+#         input_weighted = Variable(input_data.data.new(input_data.size(0), self.T - 1, self.input_size).zero_())
+#         input_encoded = Variable(input_data.data.new(input_data.size(0), self.T - 1, self.hidden_size).zero_())
+# #         pdb.set_trace()
+        
+#         # hidden, cell: initial states with dimention hidden_size
+#         # hidden.shape = 1, batch_size, hidden_size
+#         hidden = self.init_hidden(input_data)
+#         # cell.shape = 1, batch_size, hidden_size
+#         cell = self.init_hidden(input_data) 
+#         # hidden.requires_grad = False
+#         # cell.requires_grad = False
+        
+#         # In each loop of t, update the tensors hidden and cell, and 
+#         #   update the tensors input_weighted (the "pre-lstm" inputs to the lstm layer) and 
+#         #   input_encoded (the hidden layer that comes out of each lstm call)
+#         # input_encoded contains the h values that get fed into the decoder
+#         # input_weighted contains the x values that get fed into into the encoder's lstm on each time-step.
+#         for t in range(self.T - 1):
+#             # Eqn. 8: concatenate the hidden states with each predictor
+#             # There are 3 tensors: hidden, cell and input_data.  
+#             c1 = hidden.repeat(self.input_size, 1, 1).permute(1, 0, 2)   # torch tensor dimensions = [batch_size, input_size, hidden_size]
+#             c2 = cell.repeat(self.input_size, 1, 1).permute(1, 0, 2)     # torch tensor dimensions = [batch_size, input_size, hidden_size]
+#             c3 = input_data.permute(0, 2, 1)                             # torch tensor dimensions = [batch_size, input_size, T-1]
+#             x = torch.cat((c1,c2,c3),dim=2) # torch tensor dimensions = [batch_size, input_size,(2*hidden_size + T - 1)]
+#             # Eqn. 9: Get attention weights
+#             attn_input = x.view(-1, self.hidden_size * 2 + self.T - 1)   # torch tensor dimensions = [batch_size * input_size, 2*hidden_size + T - 1]
+#             x = self.attn_linear(attn_input) # torch tensor dimensions = [batch_size * input_size, 1]
+#             softmax_input = x.view(-1, self.input_size)  # reshape x back into torch tensor dimensions = [batch_size,input_size]
+#             attn_weights = F.softmax(softmax_input) # torch tensor dimensions = [batch_size * input_size] andattn weights with values sum up to 1.
+#             # Eqn. 10: LSTM
+#             weighted_input = torch.mul(attn_weights, input_data[:, t, :]) # batch_size, input_size
+#             # Fix the warning about non-contiguous memory
+#             # see https://discuss.pytorch.org/t/dataparallel-issue-with-flatten-parameter/8282
+#             self.lstm_layer.flatten_parameters()
+#             _, lstm_states = self.lstm_layer(weighted_input.unsqueeze(0), (hidden, cell))
+#             hidden = lstm_states[0]
+#             cell = lstm_states[1]
+#             # Save output
+#             input_weighted[:, t, :] = weighted_input
+#             input_encoded[:, t, :] = hidden
+#         return input_weighted, input_encoded
+
+#     def init_hidden(self, x):
+#         # No matter whether CUDA is used, the returned variable will have the same type as x.
+#         return Variable(x.data.new(1, x.size(0), self.hidden_size).zero_()) # dimension 0 is the batch dimension
+        
+
+
+# #### Encoder equations:
+# 
+# * (equation 8) &nbsp;   &nbsp;   &nbsp;   &nbsp;   &nbsp;  $e_t^k = \mathbf{v_e}^\top  tanh(\mathbf{W_e}[\mathbf{h}_{t−1}; \mathbf{s}_{t−1}] + \mathbf{U_ex^k})$  
+#  * where $\mathbf{v_e}∈R^T, \mathbf{W_e}∈R^{T×2m} \  and \  \mathbf{U_e}∈R^{T×T}$
+#  * $\mathbf{v_e}^\top$ is calculated using a <span style="color:red">tensor(batch_size,T)</span> that is learned using <span style="color:blue">nn.Linear(in_features = T-1, out_features = 1)</span>
+#  * $\mathbf{W_e}[\mathbf{h}_{t−1}; \mathbf{s}_{t−1}]$ is calculated using a <span style="color:red">tensor(batch_size,T-1,2*m)</span> that is learned using <span style="color:blue">nn.Linear(in_features = 2m, out_features = T-1)</span>
+#    * *where m = hidden_size*
+# 
+# * (equation 9)  &nbsp;   &nbsp;   &nbsp; $α_t^k = \frac{exp(e_t^k)}{\sum\limits_{i=1} exp(e_t^i)} $ &nbsp;   &nbsp;   &nbsp;  (this is the softmax)  
+# 
+# * (equation 10)  &nbsp;   &nbsp;   &nbsp;  $\tilde{x_t} = (α_t^1 e_t^1,α_t^2 e_t^2,...,α_t^n e_t^n)^\top$ &nbsp;   &nbsp; where n = number of features
+# 
+# * (equation 11) &nbsp;   &nbsp;   &nbsp;  $\mathbf{h}_t = f_1(\mathbf{h}_{t−1},\mathbf{x}_t)$ &nbsp;   &nbsp; (this is the LSTM execution)
+# 
+
+# In[4]:
 
 
 class encoder(nn.Module):
@@ -140,6 +232,12 @@ class encoder(nn.Module):
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.T = T
+
+        self.v_e = nn.Linear(in_features = self.T-1,out_features = 1)
+        self.W_ehs = nn.Linear(in_features = self.hidden_size*2,out_features = T-1)
+        self.U_e =  nn.Linear(in_features = self.T-1,out_features = self.T-1)
+        self.v_e = nn.Linear(in_features = self.T-1,out_features = 1)
+        self.lstm_layer_x_hat = nn.LSTM(input_size = input_size, hidden_size = hidden_size, num_layers = 1)
 
         self.lstm_layer = nn.LSTM(input_size = input_size, hidden_size = hidden_size, num_layers = 1)
         self.attn_linear = nn.Linear(in_features = 2 * hidden_size + T - 1, out_features = 1)
@@ -162,34 +260,64 @@ class encoder(nn.Module):
         # hidden.requires_grad = False
         # cell.requires_grad = False
         
-        # In each loop of t, update the tensors hidden and cell, and 
-        #   update the tensors input_weighted (the "pre-lstm" inputs to the lstm layer) and 
-        #   input_encoded (the hidden layer that comes out of each lstm call)
+        # In each loop of t, we execute Equations 8, 9, and 10
+        #   we execute the equation 8.  Equation 8 produces, as the author wrote it, produces scalar values
+        #   that represent 
         # input_encoded contains the h values that get fed into the decoder
         # input_weighted contains the x values that get fed into into the encoder's lstm on each time-step.
         for t in range(self.T - 1):
-            # Eqn. 8: concatenate the hidden states with each predictor
-            # There are 3 tensors: hidden, cell and input_data.  
+            
+            # ************************************* Equation 8 *******************************************
+            # Execute equation 8
             c1 = hidden.repeat(self.input_size, 1, 1).permute(1, 0, 2)   # torch tensor dimensions = [batch_size, input_size, hidden_size]
             c2 = cell.repeat(self.input_size, 1, 1).permute(1, 0, 2)     # torch tensor dimensions = [batch_size, input_size, hidden_size]
-            c3 = input_data.permute(0, 2, 1)                             # torch tensor dimensions = [batch_size, input_size, T-1]
-            x = torch.cat((c1,c2,c3),dim=2) # torch tensor dimensions = [batch_size, input_size,(2*hidden_size + T - 1)]
-            # Eqn. 9: Get attention weights
-            attn_input = x.view(-1, self.hidden_size * 2 + self.T - 1)   # torch tensor dimensions = [batch_size * input_size, 2*hidden_size + T - 1]
-            x = self.attn_linear(attn_input) # torch tensor dimensions = [batch_size * input_size, 1]
-            softmax_input = x.view(-1, self.input_size)  # reshape x back into torch tensor dimensions = [batch_size,input_size]
-            attn_weights = F.softmax(softmax_input) # torch tensor dimensions = [batch_size * input_size] andattn weights with values sum up to 1.
-            # Eqn. 10: LSTM
-            weighted_input = torch.mul(attn_weights, input_data[:, t, :]) # batch_size, input_size
-            # Fix the warning about non-contiguous memory
-            # see https://discuss.pytorch.org/t/dataparallel-issue-with-flatten-parameter/8282
-            self.lstm_layer.flatten_parameters()
-            _, lstm_states = self.lstm_layer(weighted_input.unsqueeze(0), (hidden, cell))
-            hidden = lstm_states[0]
-            cell = lstm_states[1]
+#             c3 = input_data.permute(0, 2, 1)                             # torch tensor dimensions = [batch_size, input_size, T-1]
+            #  Create input data for W_e dot hidden(t-1) concatentated with cell(t-1)
+            h_cat_s = torch.cat((c1,c2),dim=2).reshape(-1,self.hidden_size*2)
+            # Execute W_e dot [hidden(t-1) concatentated with cell(t-1)].  However,
+            #    execute that Linear transformation for all batch elements
+            W_e_dot_h_cat_s = self.W_ehs(h_cat_s) # execute linear transformation for hidden states @ time t, for each k'th feature
+            # Execute U_e dot x_k in equation 8.  In this case,
+            #    U_e is a T X T Linear transformation, and x_k is a vector of one feature, but for all time
+            #      steps T-1.  
+            #    When we execute this Linear transformation using self.U_e, you feed self.U_e a Matrix where
+            #      the rows are x_k for all feature in all batches
+            x_k = input_data.permute(0,2,1).reshape(-1,self.T-1)
+            U_e_dot_x_k = self.U_e(x_k) # execute linear transformation for input_data @ time t, for each k'th feature
+            # Sum the output of W_e and U_e transformations.
+            #    Both of these transformations produce T-1 columns
+            W_e_U_e_sum = W_e_dot_h_cat_s + U_e_dot_x_k # sum 2 matrices with T-1 columns
+            # Execute tanh ot the sum in order to normalized the values from -1 to 1
+            tanh = F.tanh(W_e_U_e_sum) # do non linear tanh to make sure all values are between -1 and 1
+            # Execute v_e dot tanh which products single values for each feature k, for each time t.
+            #    self.v_e execute this transformation on all features, in all batch elements
+            v_e = self.v_e(tanh) # create e_k(t) values for all batches and all k's
+            # Reshape the data back into columns of features
+            v_e_k = v_e.reshape(-1,self.input_size) # get rows where each row has all k0, k1, ... n features
+            # *********************************************************************************************
+
+            # ************************************* Equation 9 ******************************************
+            # Run Equation 9 - softmax on the features
+            a_e_k = F.softmax(v_e_k) # get probabilities
+            # *********************************************************************************************
+
+            # ************************************** Equation 10 *********************************************
+            # *Run Equation 10 - Multiply the softmax weights with the actual x values
+            x_hat = torch.mul(a_e_k,input_data[:,t,:])
+            # *********************************************************************************************
+
+            # ************************************** Equation 11 *******************************************
+            # Run Equation 11 - Input the weighted x values in x_hat to the LSTM to get new hidden and cell states
+            _, lstm_x_hat_states = self.lstm_layer_x_hat(x_hat.unsqueeze(0),(hidden,cell))
+            # *********************************************************************************************
+
+            # Update the hidden and cell state for the next loop of t
+            hidden = lstm_x_hat_states[0]
+            cell = lstm_x_hat_states[1]
             # Save output
-            input_weighted[:, t, :] = weighted_input
+            input_weighted[:, t, :] = x_hat
             input_encoded[:, t, :] = hidden
+
         return input_weighted, input_encoded
 
     def init_hidden(self, x):
@@ -200,7 +328,7 @@ class encoder(nn.Module):
 
 # #### 2.02 Define the decoder:
 
-# In[12]:
+# In[5]:
 
 
 class decoder(nn.Module):
@@ -255,7 +383,7 @@ class decoder(nn.Module):
 
 # #### 2.03 Define the RNN class, that uses the encoder and decoder
 
-# In[13]:
+# In[6]:
 
 
 class da_rnn:
@@ -316,6 +444,7 @@ class da_rnn:
             perm_idx = np.random.permutation(self.train_size - self.T)
             j = 0
             while j < self.train_size:
+                
                 batch_idx = perm_idx[j:min(j + self.batch_size,len(perm_idx))]
                 X = np.zeros((len(batch_idx), self.T - 1, self.X.shape[1]))
                 y_history = np.zeros((len(batch_idx), self.T - 1))
@@ -428,7 +557,7 @@ class da_rnn:
 
 # #### 2.04 Define pred_df to execute predictions from a DataFrame
 
-# In[14]:
+# In[7]:
 
 
 def pred_df(df_test,model):
@@ -478,7 +607,7 @@ def pred_df(df_test,model):
 #   6. Run predictions using the pred_df method and model.predict .
 #   
 
-# In[15]:
+# In[8]:
 
 
 def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
@@ -535,7 +664,7 @@ def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
 #     rows_to_use = 5000
 # </code>
 
-# In[16]:
+# In[9]:
 
 
 if __name__=='__main__':
@@ -578,7 +707,7 @@ if __name__=='__main__':
 # ## 5.0 Save this ipynb notebook as a python module
 # #### run the command below in a command line in order to save this workbook as a python module
 
-# In[17]:
+# In[10]:
 
 
 #jupyter nbconvert da_rnn_from_csv.ipynb --to python
