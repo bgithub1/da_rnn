@@ -1,11 +1,12 @@
 ## da_rnn_from_csv 
-This is a version of Chandler Zuo's implementation of the paper:  
+___
+This version of da_rnn is derived from Chandler Zuo's implementation of the paper:  
 [*A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction*](https://arxiv.org/pdf/1704.02971.pdf)  
 which he details in his blog post  
 [*A PyTorch Example to Use RNN for Financial Prediction*](http://chandlerzuo.github.io/blog/2017/11/darnn)
 
-The implementation does the following:
-* The model can accept input data from other times series csvs.  
+My implementation does the following:
+* You can replace the input data with other times series csvs.  
   Change the input csv file by changing the first 2 lines of the code block in **section 4.01**. 
 
   ```
@@ -15,21 +16,23 @@ The implementation does the following:
            ...
   ```
 
-* The ipynb notebook can be saved as a python py file, that can be imported
+* You can easily save the ipynb notebook as a python py file, that can be imported
    into other ipynb notebooks or other python projects.  
    Use the bash command:  
      ```jupyter nbconvert da_rnn_from_csv.ipynb --to python ```
 
 
-* The da_rnn class can be saved using pickle:  
+* You can pickle the da_rnn class:  
   ``` pickle.dump(m,open(f'{fname_no_ext}.pt','wb')) ```  
   Then reload it and use it to make more predictions:  
   ``` m_from_pickle = pickle.load(open(f'{fname_no_ext}.pt','wb')) ```
+ 
   
-* See the ipynb notebooks **use_da_rnn_from_csv_module.ipynb** and **sine_curve_test.ipynb** to use the da_rnn model class from other ipynb notebooks.
+
 
 ___
 ## Use:  
+___
 To use this ipynb notebook, run all of the notebook's cells.  
 In **section 4.0**, you can change the data from <span style="color:blue">nasdaq100</span> component data to <span style="color:blue">uso</span> 1-minute time bars.
 
@@ -40,6 +43,7 @@ The cell with the ```if __name__=='__main___``` code (in **section 4.0**) will l
 * Reloading the model,
 * Rerunning predictions using the saved model
 
+
 ___
 ## Data:
 The folder **data** contains several csv files:
@@ -48,6 +52,7 @@ The folder **data** contains several csv files:
 * <span style="color:blue">uso_201812.csv</span> - one minute bar data just for December 2018
 
 You can train the model using either nasdaq100_padding.csv, uso_full.csv.  You can also use another time series csv with numeric columns, one of which is the label for that row (like other year, month, day, hour, minute open, high, low, close bar data).
+
 
 ___
 ## Structure of the csv/DataFrame:
