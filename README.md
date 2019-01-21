@@ -51,7 +51,7 @@ The folder **data** contains several csv files:
 * <span style="color:blue">uso_full.csv</span> - one minute bar data for the commodity ETF USO
 * <span style="color:blue">uso_201812.csv</span> - one minute bar data just for December 2018
 
-You can train the model using either nasdaq100_padding.csv, uso_full.csv.  You can also use another time series csv with numeric columns, one of which is the label for that row (like other year, month, day, hour, minute open, high, low, close bar data).
+You can train the model using any of these csv files, or any other csv whose columns conform to those examples.  You can also use another time series csv file with numeric columns.  One of those numeric columns should be used as the label/y-value for the x-values of the preceeding row.
 
 
 ___
