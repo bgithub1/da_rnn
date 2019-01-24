@@ -77,4 +77,8 @@ ___
 ## Using pdb 
 To use the pdb debuger, add pdb.set_trace() statements to the code.  
 [See this cheatsheet for a quick reference to pdb commands](https://appletree.or.kr/quick_reference_cards/Python/Python%20Debugger%20Cheatsheet.pdf)
+
+## If you cannot view the ipynb notebooks in this project, see:
+1. https://nbviewer.jupyter.org/github/bgithub1/da_rnn/blob/master/da_rnn_from_csv.ipynb
+2. https://nbviewer.jupyter.org/github/bgithub1/da_rnn/blob/master/sine_curve_test.ipynb 
   
