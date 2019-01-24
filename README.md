@@ -1,4 +1,5 @@
 ## da_rnn_from_csv 
+#### (Only tested with python 3.5 and above)
 ___
 This version of da_rnn is derived from Chandler Zuo's implementation of the paper:  
 [*A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction*](https://arxiv.org/pdf/1704.02971.pdf)  
@@ -6,7 +7,7 @@ which he details in his blog post
 [*A PyTorch Example to Use RNN for Financial Prediction*](http://chandlerzuo.github.io/blog/2017/11/darnn)
 
 My implementation does the following:
-* You can replace the input data with other times series csvs.  
+* You can replace the input data with other time series csvs.  
   Change the input csv file by changing the first 2 lines of the code block in **section 4.01**. 
 
   ```
@@ -31,9 +32,9 @@ My implementation does the following:
 
 
 ___
-## Use:  
+## Use of da_rnn_from_csv.ipynb:  
 ___
-To use this ipynb notebook, run all of the notebook's cells.  
+To use the da_rnn_from_csv.ipynb notebook, run all of the notebook's cells.  
 In **section 4.0**, you can change the data from <span style="color:blue">nasdaq100</span> component data to <span style="color:blue">uso</span> 1-minute time bars.
 
 The cell with the ```if __name__=='__main___``` code (in **section 4.0**) will launch:  
@@ -51,7 +52,7 @@ The folder **data** contains several csv files:
 * <span style="color:blue">uso_full.csv</span> - one minute bar data for the commodity ETF USO
 * <span style="color:blue">uso_201812.csv</span> - one minute bar data just for December 2018
 
-You can train the model using any of these csv files, or any other csv whose columns conform to those examples.  You can also use another time series csv file with numeric columns.  One of those numeric columns should be used as the label/y-value for the x-values of the preceeding row.
+You can train the model using any of these csv files, or any other csv whose columns conform to those examples.  Other time series csv files should only contain numeric columns.  One of those numeric columns should be used as the label/y-value for the x-values of the preceeding row.
 
 
 ___

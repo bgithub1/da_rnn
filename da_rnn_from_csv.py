@@ -3,7 +3,7 @@
 
 # ## da_rnn_from_csv 
 # ___
-# This is a version of Chandler Zuo's implementation of the paper:  
+# This version of da_rnn is derived from Chandler Zuo's implementation of the paper:  
 # [*A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction*](https://arxiv.org/pdf/1704.02971.pdf)  
 # which he details in his blog post  
 # [*A PyTorch Example to Use RNN for Financial Prediction*](http://chandlerzuo.github.io/blog/2017/11/darnn)
@@ -54,7 +54,7 @@
 # * <span style="color:blue">uso_full.csv</span> - one minute bar data for the commodity ETF USO
 # * <span style="color:blue">uso_201812.csv</span> - one minute bar data just for December 2018
 # 
-# You can train the model using either nasdaq100_padding.csv, uso_full.csv.  You can also use another time series csv with numeric columns, one of which is the label for that row (like other year, month, day, hour, minute open, high, low, close bar data).
+# You can train the model using any of these csv files, or any other csv whose columns conform to those examples.  You can also use another time series csv file with numeric columns.  One of those numeric columns should be used as the label/y-value for the x-values of the preceeding row.
 # 
 # 
 # ___
@@ -135,83 +135,14 @@ def setup_log(tag = 'VOC_TOPICS'):
 # ### 2.0 Define the main components of the RNN model
 # #### 2.01 Define the encoder:
 
-# In[3]:
-
-
-# class encoder_save(nn.Module):
-#     def __init__(self, input_size, hidden_size, T):
-#         # input size: number of underlying factors (81)
-#         # T: number of time steps (10)
-#         # hidden_size: dimension of the hidden state
-#         super(encoder, self).__init__()
-#         self.input_size = input_size
-#         self.hidden_size = hidden_size
-#         self.T = T
-
-#         self.lstm_layer = nn.LSTM(input_size = input_size, hidden_size = hidden_size, num_layers = 1)
-#         self.attn_linear = nn.Linear(in_features = 2 * hidden_size + T - 1, out_features = 1)
-
-#     def forward(self, input_data):
-#         # T is the number of time steps that we iterate through to implement attention
-#         # input_size is the number of features in the input data
-#         # input_data.shape:     batch_size, T - 1, input_size
-#         # input_weighted.shape: batch_size, T - 1, input_size
-#         # input_encoded.shape:  batch_size, T - 1, hidden_size
-#         input_weighted = Variable(input_data.data.new(input_data.size(0), self.T - 1, self.input_size).zero_())
-#         input_encoded = Variable(input_data.data.new(input_data.size(0), self.T - 1, self.hidden_size).zero_())
-# #         pdb.set_trace()
-        
-#         # hidden, cell: initial states with dimention hidden_size
-#         # hidden.shape = 1, batch_size, hidden_size
-#         hidden = self.init_hidden(input_data)
-#         # cell.shape = 1, batch_size, hidden_size
-#         cell = self.init_hidden(input_data) 
-#         # hidden.requires_grad = False
-#         # cell.requires_grad = False
-        
-#         # In each loop of t, update the tensors hidden and cell, and 
-#         #   update the tensors input_weighted (the "pre-lstm" inputs to the lstm layer) and 
-#         #   input_encoded (the hidden layer that comes out of each lstm call)
-#         # input_encoded contains the h values that get fed into the decoder
-#         # input_weighted contains the x values that get fed into into the encoder's lstm on each time-step.
-#         for t in range(self.T - 1):
-#             # Eqn. 8: concatenate the hidden states with each predictor
-#             # There are 3 tensors: hidden, cell and input_data.  
-#             c1 = hidden.repeat(self.input_size, 1, 1).permute(1, 0, 2)   # torch tensor dimensions = [batch_size, input_size, hidden_size]
-#             c2 = cell.repeat(self.input_size, 1, 1).permute(1, 0, 2)     # torch tensor dimensions = [batch_size, input_size, hidden_size]
-#             c3 = input_data.permute(0, 2, 1)                             # torch tensor dimensions = [batch_size, input_size, T-1]
-#             x = torch.cat((c1,c2,c3),dim=2) # torch tensor dimensions = [batch_size, input_size,(2*hidden_size + T - 1)]
-#             # Eqn. 9: Get attention weights
-#             attn_input = x.view(-1, self.hidden_size * 2 + self.T - 1)   # torch tensor dimensions = [batch_size * input_size, 2*hidden_size + T - 1]
-#             x = self.attn_linear(attn_input) # torch tensor dimensions = [batch_size * input_size, 1]
-#             softmax_input = x.view(-1, self.input_size)  # reshape x back into torch tensor dimensions = [batch_size,input_size]
-#             attn_weights = F.softmax(softmax_input) # torch tensor dimensions = [batch_size * input_size] andattn weights with values sum up to 1.
-#             # Eqn. 10: LSTM
-#             weighted_input = torch.mul(attn_weights, input_data[:, t, :]) # batch_size, input_size
-#             # Fix the warning about non-contiguous memory
-#             # see https://discuss.pytorch.org/t/dataparallel-issue-with-flatten-parameter/8282
-#             self.lstm_layer.flatten_parameters()
-#             _, lstm_states = self.lstm_layer(weighted_input.unsqueeze(0), (hidden, cell))
-#             hidden = lstm_states[0]
-#             cell = lstm_states[1]
-#             # Save output
-#             input_weighted[:, t, :] = weighted_input
-#             input_encoded[:, t, :] = hidden
-#         return input_weighted, input_encoded
-
-#     def init_hidden(self, x):
-#         # No matter whether CUDA is used, the returned variable will have the same type as x.
-#         return Variable(x.data.new(1, x.size(0), self.hidden_size).zero_()) # dimension 0 is the batch dimension
-        
-
-
+# ___
 # #### Encoder equations:
+# (_in the equations below, m = hidden size_)
 # 
 # * (equation 8) &nbsp;   &nbsp;   &nbsp;   &nbsp;   &nbsp;  $e_t^k = \mathbf{v_e}^\top  tanh(\mathbf{W_e}[\mathbf{h}_{t−1}; \mathbf{s}_{t−1}] + \mathbf{U_ex^k})$  
 #  * where $\mathbf{v_e}∈R^T, \mathbf{W_e}∈R^{T×2m} \  and \  \mathbf{U_e}∈R^{T×T}$
-#  * $\mathbf{v_e}^\top$ is calculated using a <span style="color:red">tensor(batch_size,T)</span> that is learned using <span style="color:blue">nn.Linear(in_features = T-1, out_features = 1)</span>
-#  * $\mathbf{W_e}[\mathbf{h}_{t−1}; \mathbf{s}_{t−1}]$ is calculated using a <span style="color:red">tensor(batch_size,T-1,2*m)</span> that is learned using <span style="color:blue">nn.Linear(in_features = 2m, out_features = T-1)</span>
-#    * *where m = hidden_size*
+#  * $\mathbf{v_e}^\top$ is calculated using a <span style="color:red">tensor(batch_size * input_size,T)</span> that is learned using <span style="color:blue">nn.Linear(in_features = T-1, out_features = 1)</span>
+#  * $\mathbf{W_e}[\mathbf{h}_{t−1}; \mathbf{s}_{t−1}]$ is calculated using a <span style="color:red">tensor(batch_size * input_size,2*m)</span> that is learned using <span style="color:blue">nn.Linear(in_features = 2m, out_features = T-1)</span>
 # 
 # * (equation 9)  &nbsp;   &nbsp;   &nbsp; $α_t^k = \frac{exp(e_t^k)}{\sum\limits_{i=1} exp(e_t^i)} $ &nbsp;   &nbsp;   &nbsp;  (this is the softmax)  
 # 
@@ -220,7 +151,7 @@ def setup_log(tag = 'VOC_TOPICS'):
 # * (equation 11) &nbsp;   &nbsp;   &nbsp;  $\mathbf{h}_t = f_1(\mathbf{h}_{t−1},\mathbf{x}_t)$ &nbsp;   &nbsp; (this is the LSTM execution)
 # 
 
-# In[4]:
+# In[3]:
 
 
 class encoder(nn.Module):
@@ -236,11 +167,7 @@ class encoder(nn.Module):
         self.v_e = nn.Linear(in_features = self.T-1,out_features = 1)
         self.W_ehs = nn.Linear(in_features = self.hidden_size*2,out_features = T-1)
         self.U_e =  nn.Linear(in_features = self.T-1,out_features = self.T-1)
-        self.v_e = nn.Linear(in_features = self.T-1,out_features = 1)
         self.lstm_layer_x_hat = nn.LSTM(input_size = input_size, hidden_size = hidden_size, num_layers = 1)
-
-        self.lstm_layer = nn.LSTM(input_size = input_size, hidden_size = hidden_size, num_layers = 1)
-        self.attn_linear = nn.Linear(in_features = 2 * hidden_size + T - 1, out_features = 1)
 
     def forward(self, input_data):
         # T is the number of time steps that we iterate through to implement attention
@@ -272,38 +199,46 @@ class encoder(nn.Module):
             c1 = hidden.repeat(self.input_size, 1, 1).permute(1, 0, 2)   # torch tensor dimensions = [batch_size, input_size, hidden_size]
             c2 = cell.repeat(self.input_size, 1, 1).permute(1, 0, 2)     # torch tensor dimensions = [batch_size, input_size, hidden_size]
 #             c3 = input_data.permute(0, 2, 1)                             # torch tensor dimensions = [batch_size, input_size, T-1]
+
             #  Create input data for W_e dot hidden(t-1) concatentated with cell(t-1)
-            h_cat_s = torch.cat((c1,c2),dim=2).reshape(-1,self.hidden_size*2)
+            h_cat_s = torch.cat((c1,c2),dim=2).reshape(-1,self.hidden_size*2) # batch_size * input_size, 2*hidden_size
+
             # Execute W_e dot [hidden(t-1) concatentated with cell(t-1)].  However,
             #    execute that Linear transformation for all batch elements
-            W_e_dot_h_cat_s = self.W_ehs(h_cat_s) # execute linear transformation for hidden states @ time t, for each k'th feature
+            W_e_dot_h_cat_s = self.W_ehs(h_cat_s) # batch_size * input_size, T-1
+
             # Execute U_e dot x_k in equation 8.  In this case,
             #    U_e is a T X T Linear transformation, and x_k is a vector of one feature, but for all time
             #      steps T-1.  
             #    When we execute this Linear transformation using self.U_e, you feed self.U_e a Matrix where
             #      the rows are x_k for all feature in all batches
             x_k = input_data.permute(0,2,1).reshape(-1,self.T-1)
-            U_e_dot_x_k = self.U_e(x_k) # execute linear transformation for input_data @ time t, for each k'th feature
+            U_e_dot_x_k = self.U_e(x_k) # batch_size * input_size, T-1
+
             # Sum the output of W_e and U_e transformations.
             #    Both of these transformations produce T-1 columns
-            W_e_U_e_sum = W_e_dot_h_cat_s + U_e_dot_x_k # sum 2 matrices with T-1 columns
+            W_e_U_e_sum = W_e_dot_h_cat_s + U_e_dot_x_k # batch_size * input_size, T-1
+
             # Execute tanh ot the sum in order to normalized the values from -1 to 1
-            tanh = F.tanh(W_e_U_e_sum) # do non linear tanh to make sure all values are between -1 and 1
-            # Execute v_e dot tanh which products single values for each feature k, for each time t.
-            #    self.v_e execute this transformation on all features, in all batch elements
-            v_e = self.v_e(tanh) # create e_k(t) values for all batches and all k's
+            tanh = F.tanh(W_e_U_e_sum) # batch_size * input_size, T-1
+
+            # Execute v_e dot tanh which produces single values for each feature k, for each time t.
+            #    self.v_e executes this transformation on all features, for all batch elements
+            v_e = self.v_e(tanh) # batch_size * input_size, 1
+
             # Reshape the data back into columns of features
-            v_e_k = v_e.reshape(-1,self.input_size) # get rows where each row has all k0, k1, ... n features
+            #   get rows where each row has all k0, k1, ... n features
+            v_e_k = v_e.reshape(-1,self.input_size) # batch_size, input_size
             # *********************************************************************************************
 
             # ************************************* Equation 9 ******************************************
-            # Run Equation 9 - softmax on the features
-            a_e_k = F.softmax(v_e_k) # get probabilities
+            # Run Equation 9 - softmax on the features to get probabilities 
+            a_e_k = F.softmax(v_e_k) # batch_size, input_size
             # *********************************************************************************************
 
             # ************************************** Equation 10 *********************************************
             # *Run Equation 10 - Multiply the softmax weights with the actual x values
-            x_hat = torch.mul(a_e_k,input_data[:,t,:])
+            x_hat = torch.mul(a_e_k,input_data[:,t,:]) # batch_size, input_size
             # *********************************************************************************************
 
             # ************************************** Equation 11 *******************************************
@@ -328,7 +263,25 @@ class encoder(nn.Module):
 
 # #### 2.02 Define the decoder:
 
-# In[5]:
+# ___
+# #### Decoder equations:
+# (_in the equations below, m = hidden size, p=decoder hidden size_)
+# 
+# * (equation 12) &nbsp;   &nbsp;   &nbsp;   &nbsp;   &nbsp;  $l_t^i = \mathbf{v_d}^\top  tanh(\mathbf{W_d}[\mathbf{d}_{t−1}; \mathbf{s^\prime}_{t−1}] + \mathbf{U_dh_i})$  
+#  * where $\mathbf{v_d}∈R^m, \mathbf{W_d}∈R^{m×2p} \  and \  \mathbf{U_d}∈R^{m×m}$
+#  * $\mathbf{v_d}^\top$ is calculated using a <span style="color:red">tensor(batch_size * (T-1),m)</span> that is learned using <span style="color:blue">nn.Linear(in_features = m, out_features = 1)</span>
+#  * $\mathbf{W_d}[\mathbf{d}_{t−1}; \mathbf{s^\prime}_{t−1}]$ is calculated using a <span style="color:red">tensor(batch_size * (T-1),2*m)</span> that is learned using <span style="color:blue">nn.Linear(in_features = 2m, out_features = m)</span>
+# 
+# * (equation 13)  &nbsp;   &nbsp;   &nbsp; $\beta_t^i = \frac{exp(l_t^i)}{\sum\limits_{j=1}^{T} exp(l_t^i)} $ &nbsp;   &nbsp;   &nbsp;  (*this is the softmax*)  
+# 
+# * (equation 14)  &nbsp;   &nbsp;   &nbsp;  ${\mathbf{c}_t} = {\sum\limits_{i=1}^{T} \beta_t^i \mathbf{h}_i}$ &nbsp;   &nbsp; (*where i is each encoder_hidden time step*)
+# 
+# * (equation 15) &nbsp;   &nbsp;   &nbsp;  $\tilde{y}_{t−1} = \tilde{\mathbf{w}}^\top [y_{t−1};\mathbf{c}_{t−1}] + \tilde{b} $ &nbsp;   &nbsp;  (*calculate y_hat using context vector and previous y value*)
+# 
+# * (equation 16) &nbsp;   &nbsp;   &nbsp;  $\mathbf{d} = f_2(\mathbf{d}_{t-1},\tilde{y}_{t-1})$ &nbsp;   &nbsp;    (*this is the LSTM*)
+# 
+
+# In[4]:
 
 
 class decoder(nn.Module):
@@ -338,15 +291,34 @@ class decoder(nn.Module):
         self.T = T
         self.encoder_hidden_size = encoder_hidden_size
         self.decoder_hidden_size = decoder_hidden_size
+        
+        # ************* Eq 12 **********************
+        self.v_d = nn.Linear(in_features = self.encoder_hidden_size,out_features = 1) 
+        self.W_dhs = nn.Linear(in_features = 2 * self.decoder_hidden_size,out_features = encoder_hidden_size) 
+        self.U_d =  nn.Linear(in_features = self.encoder_hidden_size,out_features = self.encoder_hidden_size)
+        # ************* Eq 12 **********************
+        
+        # ************** Eq 13 and 14 done in forward method *************
+        
+        # ************* Eq 15 **********************
+        self.w = nn.Linear(in_features = 1+self.encoder_hidden_size,out_features = 1)
+        self.w.weight.data.normal_()
+
+        # ************* Eq 15 **********************
 
 
-        self.attn_layer = nn.Sequential(nn.Linear(2 * decoder_hidden_size + encoder_hidden_size, encoder_hidden_size),
-                                         nn.Tanh(), nn.Linear(encoder_hidden_size, 1))
+#         self.attn_layer = nn.Sequential(nn.Linear(2 * decoder_hidden_size + encoder_hidden_size, encoder_hidden_size),
+#                                          nn.Tanh(), nn.Linear(encoder_hidden_size, 1))
+
+        # ************* Eq 16 **********************
         self.lstm_layer = nn.LSTM(input_size = 1, hidden_size = decoder_hidden_size)
-        self.fc = nn.Linear(encoder_hidden_size + 1, 1)
+        # ************* Eq 16 **********************
+        
+#         self.fc = nn.Linear(encoder_hidden_size + 1, 1)
+#         self.fc.weight.data.normal_()
+
         self.fc_final = nn.Linear(decoder_hidden_size + encoder_hidden_size, 1)
 
-        self.fc.weight.data.normal_()
 
     def forward(self, input_encoded, y_history):
         # input_encoded: batch_size,T - 1,encoder_hidden_size
@@ -354,23 +326,58 @@ class decoder(nn.Module):
         # Initialize hidden and cell, 1 * batch_size * decoder_hidden_size
         hidden = self.init_hidden(input_encoded)
         cell = self.init_hidden(input_encoded)
+
+
         # hidden.requires_grad = False
         # cell.requires_grad = False
         for t in range(self.T - 1):
+            
+            
             # Eqn. 12-13: compute attention weights
             ## batch_size * T * (2*decoder_hidden_size + encoder_hidden_size)
-            x = torch.cat((hidden.repeat(self.T - 1, 1, 1).permute(1, 0, 2),
-                           cell.repeat(self.T - 1, 1, 1).permute(1, 0, 2), input_encoded), dim = 2)
-            x = F.softmax(self.attn_layer(x.view(-1, 2 * self.decoder_hidden_size + self.encoder_hidden_size
-                                                )).view(-1, self.T - 1)) # batch_size * T - 1, row sum up to 1
-            # Eqn. 14: compute context vector
-            context = torch.bmm(x.unsqueeze(1), input_encoded)[:, 0, :] # batch_size * encoder_hidden_size
+            c1 = hidden.repeat(self.T - 1, 1, 1).permute(1, 0, 2) # batch_size,T-1,hidden_size
+            c2 = cell.repeat(self.T - 1, 1, 1).permute(1, 0, 2) # batch_size,T-1,hidden_size
+
+            # ************* Eq 12 **********************
+            x = torch.cat((c1,c2), dim = 2).reshape(-1,2*self.decoder_hidden_size)
+            W_dhs_dot_ds = self.W_dhs(x)
+            h_i = input_encoded.reshape(-1,self.encoder_hidden_size)
+            U_d_dot_h_i = self.U_d(h_i)
+            tanh = F.tanh(W_dhs_dot_ds + U_d_dot_h_i)
+            l_i_t = self.v_d(tanh)
+            lit_t = l_i_t.reshape(-1,self.T-1)
+            # ************* Eq 12 **********************
+
+            # ************* Eq 13 **********************
+            b_i_t = F.softmax(lit_t)
+            bit_t = b_i_t.reshape(-1,self.T-1)
+            # ************* Eq 13 **********************
+            
+            # ************* Eq 14 **********************
+            bit_t_3d = bit_t.unsqueeze(1)
+            context = torch.bmm(bit_t_3d,input_encoded).reshape(-1,self.encoder_hidden_size)
+            # ************* Eq 14 **********************
+#           
+#             c3 = input_encoded # batch_size,T-1,hidden_size
+#             x = torch.cat((c1,c2, c3), dim = 2)
+#             x = F.softmax(self.attn_layer(x.view(-1, 2 * self.decoder_hidden_size + self.encoder_hidden_size
+#                                                 )).view(-1, self.T - 1)) # batch_size * T - 1, row sum up to 1
+
+#             # Eqn. 14: compute context vector
+#             context = torch.bmm(x.unsqueeze(1), input_encoded)[:, 0, :] # batch_size * encoder_hidden_size
+
             if t < self.T - 1:
-                # Eqn. 15
-                y_tilde = self.fc(torch.cat((context, y_history[:, t].unsqueeze(1)), dim = 1)) # batch_size * 1
-                # Eqn. 16: LSTM
+                # ********************** Eqn. 15 ***********************
+#                 y_tilde = self.fc(torch.cat((context, y_history[:, t].unsqueeze(1)), dim = 1)) # batch_size, 1
+                y_tilde = self.w(torch.cat((context, y_history[:, t].unsqueeze(1)), dim = 1)) # batch_size, 1
+                # ********************** Eqn. 15 ***********************
+
+                # ********************** Eqn. 16: LSTM **********************
                 self.lstm_layer.flatten_parameters()
                 _, lstm_output = self.lstm_layer(y_tilde.unsqueeze(0), (hidden, cell))
+                # ********************** Eqn. 16: LSTM **********************
+
+                # update values
                 hidden = lstm_output[0] # 1 * batch_size * decoder_hidden_size
                 cell = lstm_output[1] # 1 * batch_size * decoder_hidden_size
         # Eqn. 22: final output
@@ -383,7 +390,7 @@ class decoder(nn.Module):
 
 # #### 2.03 Define the RNN class, that uses the encoder and decoder
 
-# In[6]:
+# In[5]:
 
 
 class da_rnn:
@@ -557,7 +564,7 @@ class da_rnn:
 
 # #### 2.04 Define pred_df to execute predictions from a DataFrame
 
-# In[7]:
+# In[6]:
 
 
 def pred_df(df_test,model):
@@ -607,7 +614,7 @@ def pred_df(df_test,model):
 #   6. Run predictions using the pred_df method and model.predict .
 #   
 
-# In[8]:
+# In[7]:
 
 
 def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
@@ -664,7 +671,7 @@ def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
 #     rows_to_use = 5000
 # </code>
 
-# In[9]:
+# In[8]:
 
 
 if __name__=='__main__':
@@ -707,7 +714,7 @@ if __name__=='__main__':
 # ## 5.0 Save this ipynb notebook as a python module
 # #### run the command below in a command line in order to save this workbook as a python module
 
-# In[10]:
+# In[9]:
 
 
 #jupyter nbconvert da_rnn_from_csv.ipynb --to python
