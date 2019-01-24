@@ -1,4 +1,4 @@
-## da_rnn_from_csv 
+## da_rnn_from_csv _(see below if the ipynb notebooks do not render in github)_
 #### (Only tested with python 3.5 and above)
 ___
 This version of da_rnn is derived from Chandler Zuo's implementation of the paper:  
