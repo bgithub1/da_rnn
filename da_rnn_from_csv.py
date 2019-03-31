@@ -1,7 +1,8 @@
 
 # coding: utf-8
 
-# ## da_rnn_from_csv 
+# ## da_rnn_from_csv  
+# #### (only tested on 3.5 and up)
 # ___
 # This version of da_rnn is derived from Chandler Zuo's implementation of the paper:  
 # [*A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction*](https://arxiv.org/pdf/1704.02971.pdf)  
@@ -83,7 +84,7 @@
 
 # ### 1.0 Define dependencies
 
-# In[1]:
+# In[ ]:
 
 
 import pdb
@@ -110,7 +111,7 @@ pd.set_option('display.max_columns',1000)
 
 # #### 1.01 Define a method that creates a python logger 
 
-# In[2]:
+# In[ ]:
 
 
 def setup_log(tag = 'VOC_TOPICS'):
@@ -151,7 +152,7 @@ def setup_log(tag = 'VOC_TOPICS'):
 # * (equation 11) &nbsp;   &nbsp;   &nbsp;  $\mathbf{h}_t = f_1(\mathbf{h}_{t−1},\mathbf{x}_t)$ &nbsp;   &nbsp; (this is the LSTM execution)
 # 
 
-# In[3]:
+# In[ ]:
 
 
 class encoder(nn.Module):
@@ -281,7 +282,7 @@ class encoder(nn.Module):
 # * (equation 16) &nbsp;   &nbsp;   &nbsp;  $\mathbf{d} = f_2(\mathbf{d}_{t-1},\tilde{y}_{t-1})$ &nbsp;   &nbsp;    (*this is the LSTM*)
 # 
 
-# In[4]:
+# In[ ]:
 
 
 class decoder(nn.Module):
@@ -303,12 +304,6 @@ class decoder(nn.Module):
         # ************* Eq 15 **********************
         self.w = nn.Linear(in_features = 1+self.encoder_hidden_size,out_features = 1)
         self.w.weight.data.normal_()
-
-        # ************* Eq 15 **********************
-
-
-#         self.attn_layer = nn.Sequential(nn.Linear(2 * decoder_hidden_size + encoder_hidden_size, encoder_hidden_size),
-#                                          nn.Tanh(), nn.Linear(encoder_hidden_size, 1))
 
         # ************* Eq 16 **********************
         self.lstm_layer = nn.LSTM(input_size = 1, hidden_size = decoder_hidden_size)
@@ -358,14 +353,6 @@ class decoder(nn.Module):
             context = torch.bmm(bit_t_3d,input_encoded).reshape(-1,self.encoder_hidden_size)
             # ************* Eq 14 **********************
 #           
-#             c3 = input_encoded # batch_size,T-1,hidden_size
-#             x = torch.cat((c1,c2, c3), dim = 2)
-#             x = F.softmax(self.attn_layer(x.view(-1, 2 * self.decoder_hidden_size + self.encoder_hidden_size
-#                                                 )).view(-1, self.T - 1)) # batch_size * T - 1, row sum up to 1
-
-#             # Eqn. 14: compute context vector
-#             context = torch.bmm(x.unsqueeze(1), input_encoded)[:, 0, :] # batch_size * encoder_hidden_size
-
             if t < self.T - 1:
                 # ********************** Eqn. 15 ***********************
 #                 y_tilde = self.fc(torch.cat((context, y_history[:, t].unsqueeze(1)), dim = 1)) # batch_size, 1
@@ -390,7 +377,7 @@ class decoder(nn.Module):
 
 # #### 2.03 Define the RNN class, that uses the encoder and decoder
 
-# In[5]:
+# In[ ]:
 
 
 class da_rnn:
@@ -564,7 +551,7 @@ class da_rnn:
 
 # #### 2.04 Define pred_df to execute predictions from a DataFrame
 
-# In[6]:
+# In[ ]:
 
 
 def pred_df(df_test,model):
@@ -614,7 +601,7 @@ def pred_df(df_test,model):
 #   6. Run predictions using the pred_df method and model.predict .
 #   
 
-# In[7]:
+# In[ ]:
 
 
 def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
@@ -638,7 +625,7 @@ def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
         df[label_column] = df['close'] 
 
     # create a subset of the main csv by changing NUM_ROWS_TO_USE
-    NUM_ROWS_TO_USE=subset_rows
+    NUM_ROWS_TO_USE=subset_rows if len(df) > subset_rows else len(df)
     NUM_VALIDATION_ROWS = NUM_ROWS_TO_USE // 10
     BEG_ROW = -1 * NUM_ROWS_TO_USE
     END_ROW = None 
@@ -671,14 +658,19 @@ def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
 #     rows_to_use = 5000
 # </code>
 
-# In[8]:
+# In[ ]:
 
 
 if __name__=='__main__':
+    save_model = True
+
+    # ********** Uncomment out a file name (without the ".csv" extension) to use below **********************
 #     fname_no_ext = 'sin_vals'
 #     fname_no_ext = 'uso_full'
-    save_model = True
+#     fname_no_ext = 'df_price_and_debt'
     fname_no_ext = 'nasdaq100_padding'
+    
+
     rows_to_use = 5000
     return_dict = main(FILE_NAME_NO_EXTENSION=fname_no_ext,subset_rows=rows_to_use)
     print(f'The main method returns a dictionary with keys {list(return_dict.keys())}')
@@ -714,7 +706,7 @@ if __name__=='__main__':
 # ## 5.0 Save this ipynb notebook as a python module
 # #### run the command below in a command line in order to save this workbook as a python module
 
-# In[9]:
+# In[ ]:
 
 
 #jupyter nbconvert da_rnn_from_csv.ipynb --to python
