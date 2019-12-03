@@ -100,10 +100,11 @@ import pandas as pd
 import datetime
 import matplotlib.pyplot as plt
 import pickle
+import sys
 # from sklearn.manifold import TSNE
 
 # local_data_dir = './temp_folder'
-get_ipython().run_line_magic('matplotlib', 'inline')
+get_ipython().run_line_magic('matplotlib', 'auto')
 np.set_printoptions(suppress=True)
 pd.set_option('display.max_rows',1000)
 pd.set_option('display.max_columns',1000)
@@ -122,7 +123,8 @@ def setup_log(tag = 'VOC_TOPICS'):
     logger.setLevel(logging.DEBUG)
     # create console handler and set level to debug
     ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
+#     ch.setLevel(logging.DEBUG)
+    ch.setLevel(logging.INFO)
     # create formatter
     formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
     # add formatter to ch
@@ -497,7 +499,10 @@ class da_rnn:
         self.encoder_optimizer.step()
         self.decoder_optimizer.step()
 
-        return loss.data[0]
+#         return loss.data[0]
+        if len(loss.data.shape)>0:
+            return loss.data[0]
+        return loss.data.reshape(-1,1)[0]
 
     def predict(self, on_train = False):
         if on_train:
@@ -662,7 +667,10 @@ def main(FILE_NAME_NO_EXTENSION=None,subset_rows=10000):
 
 
 if __name__=='__main__':
-    save_model = True
+    if len(sys.argv)<2:
+        save_model = False
+    else:
+        save_model = str(sys.argv[1]).lower()=='true'
 
     # ********** Uncomment out a file name (without the ".csv" extension) to use below **********************
 #     fname_no_ext = 'sin_vals'
